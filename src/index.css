@@ -1,0 +1,51 @@
+/* ===== CSS Variables ===== */
+:root {
+  --color-bg: #f0f2f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8f9fc;
+  --color-border: #e5e7eb;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  --color-accent: #4f7df9;
+  --color-accent-hover: #3b68e8;
+  --color-accent-light: #eef2ff;
+
+  /* Priority */
+  --priority-high-line: #E24B4A;
+  --priority-high-bg: #FCEBEB;
+  --priority-high-text: #A32D2D;
+
+  --priority-mid-line: #EF9F27;
+  --priority-mid-bg: #FAEEDA;
+  --priority-mid-text: #854F0B;
+
+  --priority-low-line: #378ADD;
+  --priority-low-bg: #E6F1FB;
+  --priority-low-text: #185FA5;
+
+  --radius: 12px;
+  --radius-sm: 7px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow-md: 0 2px 12px rgba(0,0,0,0.09);
+}
+
+/* ===== Reset ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans',
+               'Noto Sans JP', 'Yu Gothic', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input, textarea, select { font-family: inherit; font-size: 14px; }
