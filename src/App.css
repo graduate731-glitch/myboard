@@ -1,3 +1,70 @@
+/* ===== Loading ===== */
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Login ===== */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+}
+.login-card {
+  background: var(--color-surface);
+  border-radius: 20px;
+  padding: 48px 40px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  width: 100%;
+  max-width: 360px;
+}
+.login-icon { font-size: 48px; margin-bottom: 12px; }
+.login-title { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.login-desc { color: var(--color-text-secondary); margin-bottom: 32px; font-size: 14px; }
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 0;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  transition: box-shadow 0.15s;
+}
+.btn-google:hover { box-shadow: var(--shadow-md); }
+
+/* ===== Header user ===== */
+.header-user { display: flex; align-items: center; gap: 10px; }
+.user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+.btn-logout {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 20px;
+  transition: all 0.12s;
+}
+.btn-logout:hover { border-color: #dc2626; color: #dc2626; }
+
 /* ===== Layout ===== */
 .app {
   min-height: 100vh;
@@ -13,6 +80,9 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .app-title {
