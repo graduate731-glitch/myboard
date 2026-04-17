@@ -429,7 +429,10 @@ export default function App() {
           マイボード
         </h1>
         <div className="header-user">
-          <img src={session.user.user_metadata.avatar_url} className="user-avatar" alt="" />
+          {session.user.user_metadata?.avatar_url && (
+            <img src={session.user.user_metadata.avatar_url} className="user-avatar" alt="" />
+          )}
+          <span className="user-email">{session.user.email}</span>
           <button className="btn-logout" onClick={handleLogout}>ログアウト</button>
         </div>
       </header>
