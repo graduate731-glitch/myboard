@@ -359,6 +359,7 @@ export default function App() {
     const { data } = await supabase
       .from('tasks')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
     if (data) setTasks(data)
   }
@@ -367,6 +368,7 @@ export default function App() {
     const { data } = await supabase
       .from('memos')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
     if (data) setMemos(data)
   }
@@ -429,10 +431,10 @@ export default function App() {
           マイボード
         </h1>
         <div className="header-user">
-          {session.user.user_metadata?.avatar_url && (
+          {session?.user?.user_metadata?.avatar_url && (
             <img src={session.user.user_metadata.avatar_url} className="user-avatar" alt="" />
           )}
-          <span className="user-email">{session.user.email}</span>
+          <span className="user-email">{session?.user?.email ?? ''}</span>
           <button className="btn-logout" onClick={handleLogout}>ログアウト</button>
         </div>
       </header>
