@@ -26,7 +26,7 @@ function isThisMonth(dateStr) {
 }
 
 const PRIORITIES = ['高', '中', '低']
-const CATEGORIES = ['本業', '副業', 'その他']
+const CATEGORIES = ['本業', '副業', '趣味', '日常生活', 'その他']
 
 function priorityStyle(priority, part) {
   const map = {
@@ -191,7 +191,7 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
     setDate(todayStr())
   }
 
-  const categoryOptions = ['全て', ...Array.from(new Set(tasks.map(t => t.category).filter(Boolean)))]
+  const categoryOptions = ['全て', ...CATEGORIES]
 
   const filtered = tasks.filter(t => {
     if (filterDate === '今日' && t.date !== todayStr()) return false
