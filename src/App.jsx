@@ -28,6 +28,46 @@ function isThisMonth(dateStr) {
 const PRIORITIES = ['高', '中', '低']
 const CATEGORIES = ['本業', '副業', '趣味', '日常生活', 'その他']
 
+// ===== Google Calendar API =====
+const GCAL_EVENTS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+
+function gcalEndDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+async function gcalCreate(token, text, date) {
+  try {
+    const res = await fetch(GCAL_EVENTS, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary: text, start: { date }, end: { date: gcalEndDate(date) } }),
+    })
+    if (!res.ok) return null
+    return (await res.json()).id
+  } catch { return null }
+}
+
+async function gcalUpdate(token, eventId, text, date) {
+  try {
+    await fetch(`${GCAL_EVENTS}/${eventId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary: text, start: { date }, end: { date: gcalEndDate(date) } }),
+    })
+  } catch { /* silent */ }
+}
+
+async function gcalDelete(token, eventId) {
+  try {
+    await fetch(`${GCAL_EVENTS}/${eventId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch { /* silent */ }
+}
+
 function priorityStyle(priority, part) {
   const map = {
     高: { line: 'var(--priority-high-line)', bg: 'var(--priority-high-bg)', text: 'var(--priority-high-text)' },
@@ -45,7 +85,10 @@ function LoginScreen() {
     setLoading(true)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: {
+        scopes: 'https://www.googleapis.com/auth/calendar.events',
+        redirectTo: window.location.origin,
+      },
     })
   }
 
@@ -348,6 +391,7 @@ function XIcon() {
 // ===== App =====
 export default function App() {
   const [session, setSession] = useState(null)
+  const [providerToken, setProviderToken] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState([])
   const [memos, setMemos] = useState([])
@@ -357,10 +401,12 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+      setProviderToken(session?.provider_token ?? null)
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      setProviderToken(session?.provider_token ?? null)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -391,12 +437,22 @@ export default function App() {
   }
 
   const addTask = useCallback(async ({ text, priority, category, date }) => {
+    const taskDate = date || todayStr()
     const { data } = await supabase.from('tasks').insert({
-      text, priority, category, done: false, date: date || todayStr(),
+      text, priority, category, done: false, date: taskDate,
       user_id: session.user.id,
     }).select().single()
-    if (data) setTasks(prev => [data, ...prev])
-  }, [session])
+    if (data) {
+      setTasks(prev => [data, ...prev])
+      if (providerToken) {
+        const eventId = await gcalCreate(providerToken, text, taskDate)
+        if (eventId) {
+          await supabase.from('tasks').update({ gcal_event_id: eventId }).eq('id', data.id)
+          setTasks(prev => prev.map(t => t.id === data.id ? { ...t, gcal_event_id: eventId } : t))
+        }
+      }
+    }
+  }, [session, providerToken])
 
   const toggleTask = useCallback(async (id, currentDone) => {
     const { data } = await supabase.from('tasks').update({ done: !currentDone }).eq('id', id).select().single()
@@ -405,13 +461,22 @@ export default function App() {
 
   const editTask = useCallback(async (id, changes) => {
     const { data } = await supabase.from('tasks').update(changes).eq('id', id).select().single()
-    if (data) setTasks(prev => prev.map(t => t.id === id ? data : t))
-  }, [])
+    if (data) {
+      setTasks(prev => prev.map(t => t.id === id ? data : t))
+      if (providerToken && data.gcal_event_id) {
+        await gcalUpdate(providerToken, data.gcal_event_id, data.text, data.date || todayStr())
+      }
+    }
+  }, [providerToken])
 
   const deleteTask = useCallback(async (id) => {
+    const task = tasks.find(t => t.id === id)
     await supabase.from('tasks').delete().eq('id', id)
     setTasks(prev => prev.filter(t => t.id !== id))
-  }, [])
+    if (providerToken && task?.gcal_event_id) {
+      await gcalDelete(providerToken, task.gcal_event_id)
+    }
+  }, [tasks, providerToken])
 
   const addMemo = useCallback(async (text) => {
     const { data } = await supabase.from('memos').insert({
