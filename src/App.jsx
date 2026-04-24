@@ -26,7 +26,7 @@ function isThisMonth(dateStr) {
 }
 
 const PRIORITIES = ['高', '中', '低']
-const CATEGORIES = ['本業', '副業', '日常生活', '趣味', 'その他']
+const CATEGORIES = ['本業', '副業', 'その他']
 
 function priorityStyle(priority, part) {
   const map = {
