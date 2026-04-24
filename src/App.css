@@ -511,11 +511,21 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 600px) {
-  .summary-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .summary-card { padding: 12px; gap: 8px; }
+  .app-header { padding: 10px 14px; gap: 8px; }
+  .app-title { font-size: 16px; }
+  .user-email { display: none; }
+  .user-avatar { width: 24px; height: 24px; }
+  .btn-logout { font-size: 11px; padding: 3px 8px; }
+
+  .app-main { padding: 16px 12px 40px; gap: 14px; }
+
+  .summary-cards { gap: 8px; }
+  .summary-card { padding: 12px 10px; gap: 8px; }
   .summary-icon { font-size: 18px; }
   .summary-value { font-size: 20px; }
   .summary-label { font-size: 11px; }
+
+  .add-form-row { flex-wrap: wrap; gap: 6px; }
 
   .task-meta { flex-direction: column; align-items: flex-end; }
   .task-main { flex-wrap: wrap; }

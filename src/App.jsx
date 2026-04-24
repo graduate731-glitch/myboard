@@ -26,7 +26,7 @@ function isThisMonth(dateStr) {
 }
 
 const PRIORITIES = ['高', '中', '低']
-const CATEGORIES = ['本業', '副業', '休日', 'その他']
+const CATEGORIES = ['本業', '副業', '日常生活', '趣味', 'その他']
 
 function priorityStyle(priority, part) {
   const map = {
@@ -180,6 +180,7 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
   const [filterDate, setFilterDate] = useState('全て')
   const [filterPriority, setFilterPriority] = useState('全て')
   const [filterStatus, setFilterStatus] = useState('全て')
+  const [filterCategory, setFilterCategory] = useState('全て')
 
   const handleAdd = () => {
     if (!text.trim()) return
@@ -190,6 +191,8 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
     setDate(todayStr())
   }
 
+  const categoryOptions = ['全て', ...Array.from(new Set(tasks.map(t => t.category).filter(Boolean)))]
+
   const filtered = tasks.filter(t => {
     if (filterDate === '今日' && t.date !== todayStr()) return false
     if (filterDate === '今週' && !isThisWeek(t.date)) return false
@@ -197,6 +200,7 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
     if (filterPriority !== '全て' && t.priority !== filterPriority) return false
     if (filterStatus === '済' && !t.done) return false
     if (filterStatus === '未' && t.done) return false
+    if (filterCategory !== '全て' && t.category !== filterCategory) return false
     return true
   })
 
@@ -229,6 +233,7 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
         <FilterGroup label="日付" options={['全て', '今日', '今週', '今月']} value={filterDate} onChange={setFilterDate} />
         <FilterGroup label="優先度" options={['全て', '高', '中', '低']} value={filterPriority} onChange={setFilterPriority} />
         <FilterGroup label="状況" options={['全て', '未', '済']} value={filterStatus} onChange={setFilterStatus} />
+        <FilterGroup label="カテゴリ" options={categoryOptions} value={filterCategory} onChange={setFilterCategory} />
       </div>
 
       <div className="task-list">
@@ -310,9 +315,9 @@ function SummaryCards({ tasks }) {
 
   return (
     <div className="summary-cards">
+      <SummaryCard label="今日やること" value={todayTodo} color="var(--priority-mid-line)" icon="📅" />
       <SummaryCard label="残りタスク" value={remaining} color="var(--priority-high-line)" icon="📋" />
       <SummaryCard label="完了" value={done} color="#22c55e" icon="✅" />
-      <SummaryCard label="今日やること" value={todayTodo} color="var(--priority-mid-line)" icon="📅" />
     </div>
   )
 }
