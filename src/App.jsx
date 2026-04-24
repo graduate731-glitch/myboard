@@ -75,11 +75,18 @@ function GoogleIcon() {
   )
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
 // ===== TaskItem =====
 function TaskItem({ task, onToggle, onEdit, onDelete }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(task.text)
   const [editPriority, setEditPriority] = useState(task.priority)
+  const [editDate, setEditDate] = useState(task.date || todayStr())
   const [editCategory, setEditCategory] = useState(
     CATEGORIES.includes(task.category) ? task.category : 'その他'
   )
@@ -91,7 +98,7 @@ function TaskItem({ task, onToggle, onEdit, onDelete }) {
     const cat = editCategory === 'その他' && editCategoryCustom.trim()
       ? editCategoryCustom.trim()
       : editCategory
-    onEdit(task.id, { text: editText, priority: editPriority, category: cat })
+    onEdit(task.id, { text: editText, priority: editPriority, category: cat, date: editDate })
     setEditing(false)
   }
 
@@ -119,6 +126,7 @@ function TaskItem({ task, onToggle, onEdit, onDelete }) {
               autoFocus
             />
             <div className="task-edit-row">
+              <input type="date" className="select-sm" value={editDate} onChange={e => setEditDate(e.target.value)} />
               <select className="select-sm" value={editPriority} onChange={e => setEditPriority(e.target.value)}>
                 {PRIORITIES.map(p => <option key={p}>{p}</option>)}
               </select>
@@ -142,6 +150,7 @@ function TaskItem({ task, onToggle, onEdit, onDelete }) {
           <div className="task-main">
             <span className="task-text">{task.text}</span>
             <div className="task-meta">
+              {task.date && <span className="badge-date">{formatDate(task.date)}</span>}
               <span className="badge-priority" style={{ background: priorityStyle(task.priority, 'bg'), color: priorityStyle(task.priority, 'text') }}>
                 {task.priority}
               </span>
@@ -167,6 +176,7 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
   const [priority, setPriority] = useState('中')
   const [category, setCategory] = useState('本業')
   const [categoryCustom, setCategoryCustom] = useState('')
+  const [date, setDate] = useState(todayStr())
   const [filterDate, setFilterDate] = useState('全て')
   const [filterPriority, setFilterPriority] = useState('全て')
   const [filterStatus, setFilterStatus] = useState('全て')
@@ -174,9 +184,10 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
   const handleAdd = () => {
     if (!text.trim()) return
     const cat = category === 'その他' && categoryCustom.trim() ? categoryCustom.trim() : category
-    onAdd({ text: text.trim(), priority, category: cat })
+    onAdd({ text: text.trim(), priority, category: cat, date })
     setText('')
     setCategoryCustom('')
+    setDate(todayStr())
   }
 
   const filtered = tasks.filter(t => {
@@ -200,6 +211,7 @@ function TaskBoard({ tasks, onAdd, onToggle, onEdit, onDelete }) {
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
         <div className="add-form-row">
+          <input type="date" className="select-sm" value={date} onChange={e => setDate(e.target.value)} />
           <select className="select-sm" value={priority} onChange={e => setPriority(e.target.value)}>
             {PRIORITIES.map(p => <option key={p}>{p}</option>)}
           </select>
@@ -373,9 +385,9 @@ export default function App() {
     if (data) setMemos(data)
   }
 
-  const addTask = useCallback(async ({ text, priority, category }) => {
+  const addTask = useCallback(async ({ text, priority, category, date }) => {
     const { data } = await supabase.from('tasks').insert({
-      text, priority, category, done: false, date: todayStr(),
+      text, priority, category, done: false, date: date || todayStr(),
       user_id: session.user.id,
     }).select().single()
     if (data) setTasks(prev => [data, ...prev])
