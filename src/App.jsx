@@ -447,6 +447,12 @@ function ScheduleBoard({ providerToken }) {
     setLoadingSheet(false)
   }
 
+  const allSelected = sheetRows.length > 0 && selected.length === sheetRows.length
+
+  const toggleSelectAll = () => {
+    setSelected(allSelected ? [] : sheetRows.map((_, i) => i))
+  }
+
   const toggleSelect = (i) => {
     setSelected(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])
   }
@@ -454,6 +460,7 @@ function ScheduleBoard({ providerToken }) {
   const handleBulkRegister = async () => {
     if (!providerToken || selected.length === 0) return
     setRegistering(true)
+    setSheetStatus('')
     let success = 0
     for (const i of selected) {
       const [jaDate, startT, endT, cont, col] = sheetRows[i]
@@ -464,7 +471,7 @@ function ScheduleBoard({ providerToken }) {
       })
       if (ok) success++
     }
-    setSheetStatus(`✅ ${success}件登録しました`)
+    setSheetStatus(`✅ ${success}件をGoogleカレンダーに登録しました！`)
     setSelected([])
     setRegistering(false)
   }
@@ -511,6 +518,18 @@ function ScheduleBoard({ providerToken }) {
         {sheetStatus && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{sheetStatus}</div>}
         {sheetRows.length > 0 && (
           <>
+            <div
+              className="task-item"
+              style={{ borderLeftColor: '#9ca3af', cursor: 'pointer', background: 'var(--color-bg-secondary)' }}
+              onClick={toggleSelectAll}
+            >
+              <div className={`task-check${allSelected ? ' checked' : ''}`} style={{ flexShrink: 0 }}>
+                {allSelected && <CheckIcon />}
+              </div>
+              <div className="task-body">
+                <span className="task-text" style={{ fontWeight: 600 }}>すべて選択</span>
+              </div>
+            </div>
             <div className="task-list" style={{ maxHeight: 300, overflowY: 'auto' }}>
               {sheetRows.map((row, i) => (
                 <div key={i} className="task-item" style={{ borderLeftColor: COLOR_STYLE[row[4]] ?? '#9ca3af', cursor: 'pointer' }}
