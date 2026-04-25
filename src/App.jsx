@@ -57,9 +57,18 @@ async function gcalCreateSchedule(token, { date, startTime, endTime, content, co
   } catch { return false }
 }
 
-async function fetchSheetRows(token) {
+function extractSheetId(input) {
+  if (!input) return null
+  const m = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+  if (m) return m[1]
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(input.trim())) return input.trim()
+  return null
+}
+
+async function fetchSheetRows(token, sheetId) {
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/latest!A2:E100`
+    const id = sheetId || SHEET_ID
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/latest!A2:E100`
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) return []
     const { values = [] } = await res.json()
@@ -397,6 +406,7 @@ function ScheduleBoard({ providerToken }) {
   const [content, setContent] = useState('')
   const [color, setColor] = useState('青')
   const [status, setStatus] = useState('')
+  const [sheetUrl, setSheetUrl] = useState('')
   const [sheetRows, setSheetRows] = useState([])
   const [selected, setSelected] = useState([])
   const [sheetStatus, setSheetStatus] = useState('')
@@ -417,9 +427,14 @@ function ScheduleBoard({ providerToken }) {
 
   const handleLoadSheet = async () => {
     if (!providerToken) return
+    const sheetId = extractSheetId(sheetUrl)
+    if (!sheetId) {
+      setSheetStatus('❌ URLまたはシートIDが正しくありません')
+      return
+    }
     setLoadingSheet(true)
     setSheetStatus('')
-    const rows = await fetchSheetRows(providerToken)
+    const rows = await fetchSheetRows(providerToken, sheetId)
     setSheetRows(rows)
     setSelected([])
     setSheetStatus(rows.length === 0 ? 'データがありません' : `${rows.length}件取得しました`)
@@ -474,8 +489,15 @@ function ScheduleBoard({ providerToken }) {
       </div>
 
       <div className="add-form">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>スプレッドシートから一括登録</span>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>スプレッドシートから一括登録</div>
+        <div className="add-form-row">
+          <input
+            className="add-input"
+            placeholder="スプレッドシートのURLまたはシートID"
+            value={sheetUrl}
+            onChange={e => setSheetUrl(e.target.value)}
+            style={{ flex: 1 }}
+          />
           <button className="btn-add" onClick={handleLoadSheet} disabled={loadingSheet || !providerToken}>
             {loadingSheet ? '読込中...' : '読み込む'}
           </button>
@@ -689,11 +711,11 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <SummaryCards tasks={tasks} />
+        {tab === 'tasks' && <SummaryCards tasks={tasks} />}
         <div className="tabs">
+          <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => setTab('schedule')}>スケジュール</button>
           <button className={`tab-btn${tab === 'tasks' ? ' active' : ''}`} onClick={() => setTab('tasks')}>タスク管理</button>
           <button className={`tab-btn${tab === 'ideas' ? ' active' : ''}`} onClick={() => setTab('ideas')}>アイデアメモ</button>
-          <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => setTab('schedule')}>スケジュール</button>
         </div>
         {tab === 'tasks' && <TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} />}
         {tab === 'ideas' && <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} />}
