@@ -30,6 +30,42 @@ const CATEGORIES = ['本業', '副業', '趣味', '日常生活', 'その他']
 
 // ===== Google Calendar API =====
 const GCAL_EVENTS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+const COLOR_ID = { 赤: '11', 青: '9', 黄: '5', 黄色: '5', 緑: '10', 紫: '3' }
+const SHEET_ID = '1lzJqZwUxScN6vb6kvcg5UbwXPisBUCLV6qpqXBycNms'
+
+function parseJaDate(str) {
+  if (!str) return null
+  const m = String(str).match(/(\d{4})年(\d{1,2})月(\d{1,2})日/)
+  if (!m) return null
+  return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+}
+
+async function gcalCreateSchedule(token, { date, startTime, endTime, content, color }) {
+  try {
+    const res = await fetch(GCAL_EVENTS, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        summary: content,
+        start: { dateTime: `${date}T${startTime}:00+09:00`, timeZone: 'Asia/Tokyo' },
+        end:   { dateTime: `${date}T${endTime}:00+09:00`,   timeZone: 'Asia/Tokyo' },
+        colorId: COLOR_ID[color] ?? '9',
+        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 1440 }] },
+      }),
+    })
+    return res.ok
+  } catch { return false }
+}
+
+async function fetchSheetRows(token) {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/latest!A2:E100`
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return []
+    const { values = [] } = await res.json()
+    return values.filter(r => r[0] && parseJaDate(r[0]))
+  } catch { return [] }
+}
 
 function gcalEndDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
@@ -86,7 +122,7 @@ function LoginScreen() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        scopes: 'https://www.googleapis.com/auth/calendar.events',
+        scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/spreadsheets.readonly',
         redirectTo: window.location.origin,
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
@@ -350,6 +386,135 @@ function IdeaBoard({ memos, onAdd, onDelete }) {
   )
 }
 
+// ===== ScheduleBoard =====
+const SCHED_COLORS = ['赤', '青', '黄', '緑', '紫']
+const COLOR_STYLE = { 赤: '#ef4444', 青: '#3b82f6', 黄: '#eab308', 緑: '#22c55e', 紫: '#a855f7' }
+
+function ScheduleBoard({ providerToken }) {
+  const [date, setDate] = useState(todayStr())
+  const [startTime, setStartTime] = useState('09:00')
+  const [endTime, setEndTime] = useState('10:00')
+  const [content, setContent] = useState('')
+  const [color, setColor] = useState('青')
+  const [status, setStatus] = useState('')
+  const [sheetRows, setSheetRows] = useState([])
+  const [selected, setSelected] = useState([])
+  const [sheetStatus, setSheetStatus] = useState('')
+  const [loadingSheet, setLoadingSheet] = useState(false)
+  const [registering, setRegistering] = useState(false)
+
+  const handleAdd = async () => {
+    if (!content.trim() || !providerToken) return
+    const ok = await gcalCreateSchedule(providerToken, { date, startTime, endTime, content: content.trim(), color })
+    if (ok) {
+      setStatus('✅ カレンダーに登録しました')
+      setContent('')
+    } else {
+      setStatus('❌ 登録に失敗しました')
+    }
+    setTimeout(() => setStatus(''), 3000)
+  }
+
+  const handleLoadSheet = async () => {
+    if (!providerToken) return
+    setLoadingSheet(true)
+    setSheetStatus('')
+    const rows = await fetchSheetRows(providerToken)
+    setSheetRows(rows)
+    setSelected([])
+    setSheetStatus(rows.length === 0 ? 'データがありません' : `${rows.length}件取得しました`)
+    setLoadingSheet(false)
+  }
+
+  const toggleSelect = (i) => {
+    setSelected(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])
+  }
+
+  const handleBulkRegister = async () => {
+    if (!providerToken || selected.length === 0) return
+    setRegistering(true)
+    let success = 0
+    for (const i of selected) {
+      const [jaDate, startT, endT, cont, col] = sheetRows[i]
+      const date = parseJaDate(jaDate)
+      if (!date) continue
+      const ok = await gcalCreateSchedule(providerToken, {
+        date, startTime: startT, endTime: endT, content: cont, color: col || '青'
+      })
+      if (ok) success++
+    }
+    setSheetStatus(`✅ ${success}件登録しました`)
+    setSelected([])
+    setRegistering(false)
+  }
+
+  return (
+    <div className="board">
+      <div className="add-form">
+        <div className="add-form-row">
+          <input type="date" className="select-sm" value={date} onChange={e => setDate(e.target.value)} />
+          <input type="time" className="select-sm" value={startTime} onChange={e => setStartTime(e.target.value)} />
+          <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>〜</span>
+          <input type="time" className="select-sm" value={endTime} onChange={e => setEndTime(e.target.value)} />
+        </div>
+        <input className="add-input" placeholder="内容を入力..." value={content} onChange={e => setContent(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+        <div className="add-form-row">
+          <div style={{ display: 'flex', gap: 6 }}>
+            {SCHED_COLORS.map(c => (
+              <button key={c} onClick={() => setColor(c)} style={{
+                width: 28, height: 28, borderRadius: '50%', background: COLOR_STYLE[c],
+                border: color === c ? '3px solid var(--color-text-primary)' : '3px solid transparent',
+                flexShrink: 0,
+              }} title={c} />
+            ))}
+          </div>
+          <button className="btn-add" onClick={handleAdd} disabled={!providerToken}>登録</button>
+        </div>
+        {status && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{status}</div>}
+      </div>
+
+      <div className="add-form">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>スプレッドシートから一括登録</span>
+          <button className="btn-add" onClick={handleLoadSheet} disabled={loadingSheet || !providerToken}>
+            {loadingSheet ? '読込中...' : '読み込む'}
+          </button>
+        </div>
+        {sheetStatus && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{sheetStatus}</div>}
+        {sheetRows.length > 0 && (
+          <>
+            <div className="task-list" style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {sheetRows.map((row, i) => (
+                <div key={i} className="task-item" style={{ borderLeftColor: COLOR_STYLE[row[4]] ?? '#9ca3af', cursor: 'pointer' }}
+                  onClick={() => toggleSelect(i)}>
+                  <div className={`task-check${selected.includes(i) ? ' checked' : ''}`} style={{ flexShrink: 0 }}>
+                    {selected.includes(i) && <CheckIcon />}
+                  </div>
+                  <div className="task-body">
+                    <div className="task-main">
+                      <span className="task-text">{row[3]}</span>
+                      <div className="task-meta">
+                        <span className="badge-date">{row[0]}</span>
+                        <span className="badge-category">{row[1]}〜{row[2]}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="add-form-row" style={{ justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{selected.length}件選択中</span>
+              <button className="btn-add" onClick={handleBulkRegister} disabled={selected.length === 0 || registering}>
+                {registering ? '登録中...' : 'まとめてカレンダーに登録'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ===== SummaryCards =====
 function SummaryCards({ tasks }) {
   const today = todayStr()
@@ -397,6 +562,7 @@ export default function App() {
   const [tasks, setTasks] = useState([])
   const [memos, setMemos] = useState([])
   const [tab, setTab] = useState('tasks')
+
 
   // Auth
   useEffect(() => {
@@ -527,12 +693,11 @@ export default function App() {
         <div className="tabs">
           <button className={`tab-btn${tab === 'tasks' ? ' active' : ''}`} onClick={() => setTab('tasks')}>タスク管理</button>
           <button className={`tab-btn${tab === 'ideas' ? ' active' : ''}`} onClick={() => setTab('ideas')}>アイデアメモ</button>
+          <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => setTab('schedule')}>スケジュール</button>
         </div>
-        {tab === 'tasks' ? (
-          <TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} />
-        ) : (
-          <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} />
-        )}
+        {tab === 'tasks' && <TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} />}
+        {tab === 'ideas' && <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} />}
+        {tab === 'schedule' && <ScheduleBoard providerToken={providerToken} />}
       </main>
     </div>
   )
