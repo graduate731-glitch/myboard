@@ -66,14 +66,15 @@ function extractSheetId(input) {
 }
 
 async function fetchSheetRows(token, sheetId) {
-  try {
-    const id = sheetId || SHEET_ID
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/latest!A2:E100`
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) return []
-    const { values = [] } = await res.json()
-    return values.filter(r => r[0] && parseJaDate(r[0]))
-  } catch { return [] }
+  const id = sheetId || SHEET_ID
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/latest!A2:E100`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(`${res.status}: ${body?.error?.message ?? res.statusText}`)
+  }
+  const { values = [] } = await res.json()
+  return values.filter(r => r[0] && parseJaDate(r[0]))
 }
 
 function gcalEndDate(dateStr) {
@@ -434,10 +435,15 @@ function ScheduleBoard({ providerToken }) {
     }
     setLoadingSheet(true)
     setSheetStatus('')
-    const rows = await fetchSheetRows(providerToken, sheetId)
-    setSheetRows(rows)
-    setSelected([])
-    setSheetStatus(rows.length === 0 ? 'データがありません' : `${rows.length}件取得しました`)
+    try {
+      const rows = await fetchSheetRows(providerToken, sheetId)
+      setSheetRows(rows)
+      setSelected([])
+      setSheetStatus(rows.length === 0 ? '⚠️ データがありません（シート名「latest」・A列が「YYYY年M月D日」形式か確認）' : `✅ ${rows.length}件取得しました`)
+    } catch (e) {
+      setSheetRows([])
+      setSheetStatus(`❌ エラー: ${e.message}`)
+    }
     setLoadingSheet(false)
   }
 
