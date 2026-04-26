@@ -622,6 +622,11 @@
   display: flex;
   align-items: center;
   touch-action: none;
+  padding: 4px 6px;
+  margin: -4px -2px;
+  min-width: 32px;
+  min-height: 36px;
+  justify-content: center;
 }
 
 .idea-card-drag:active { cursor: grabbing; }

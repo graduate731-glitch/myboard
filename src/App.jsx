@@ -517,8 +517,7 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
 
   return (
     <div ref={setNodeRef}
-      {...listeners} {...attributes}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
       className="idea-card">
       {editing ? (
         <>
@@ -538,7 +537,7 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
         </>
       ) : (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, width: '100%' }}>
-          <div className="idea-card-drag"><DragIcon /></div>
+          <div className="idea-card-drag" {...listeners} {...attributes}><DragIcon /></div>
           <div className="idea-card-dot" style={{ background: COLOR_STYLE[idea.color] ?? '#3b82f6', marginTop: 3 }} />
           <span className="idea-card-text" style={{ flex: 1 }} onClick={handleDoubleTap}>{idea.text}</span>
           <button className="btn-icon" onClick={() => { setEditText(idea.text); setEditColor(idea.color || '青'); setEditing(true) }} title="編集"><PencilIcon /></button>
