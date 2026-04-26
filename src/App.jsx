@@ -367,7 +367,7 @@ function IdeaBoard({ memos, onAdd, onDelete, onReorder, onUpdate }) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
   )
 
   const dbGroupNames = useMemo(() => [...new Set(memos.map(m => m.group_name))], [memos])
@@ -517,7 +517,8 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
 
   return (
     <div ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      {...listeners} {...attributes}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
       className="idea-card">
       {editing ? (
         <>
@@ -537,7 +538,7 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
         </>
       ) : (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, width: '100%' }}>
-          <div className="idea-card-drag" {...listeners} {...attributes}><DragIcon /></div>
+          <div className="idea-card-drag"><DragIcon /></div>
           <div className="idea-card-dot" style={{ background: COLOR_STYLE[idea.color] ?? '#3b82f6', marginTop: 3 }} />
           <span className="idea-card-text" style={{ flex: 1 }} onClick={handleDoubleTap}>{idea.text}</span>
           <button className="btn-icon" onClick={() => { setEditText(idea.text); setEditColor(idea.color || '青'); setEditing(true) }} title="編集"><PencilIcon /></button>
