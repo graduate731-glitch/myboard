@@ -536,13 +536,18 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
           </div>
         </>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, width: '100%' }}>
-          <div className="idea-card-drag" {...listeners} {...attributes}><DragIcon /></div>
-          <div className="idea-card-dot" style={{ background: COLOR_STYLE[idea.color] ?? '#3b82f6', marginTop: 3 }} />
-          <span className="idea-card-text" style={{ flex: 1 }} onClick={handleDoubleTap}>{idea.text}</span>
-          <button className="btn-icon" onClick={() => { setEditText(idea.text); setEditColor(idea.color || '青'); setEditing(true) }} title="編集"><PencilIcon /></button>
-          <button className="btn-icon btn-delete" onClick={() => onDelete(idea.id)}><XIcon /></button>
-        </div>
+        <>
+          <div className="idea-card-header">
+            <div className="idea-card-drag" {...listeners} {...attributes}><DragIcon /></div>
+            <div style={{ flex: 1 }} />
+            <button className="btn-icon" onClick={() => { setEditText(idea.text); setEditColor(idea.color || '青'); setEditing(true) }} title="編集"><PencilIcon /></button>
+            <button className="btn-icon btn-delete" onClick={() => onDelete(idea.id)}><XIcon /></button>
+          </div>
+          <div className="idea-card-body" onClick={handleDoubleTap}>
+            <div className="idea-card-dot" style={{ background: COLOR_STYLE[idea.color] ?? '#3b82f6', marginTop: 3, flexShrink: 0 }} />
+            <span className="idea-card-text">{idea.text}</span>
+          </div>
+        </>
       )}
     </div>
   )

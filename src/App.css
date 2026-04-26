@@ -608,11 +608,28 @@
   background: var(--color-surface);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  padding: 10px 10px;
+  padding: 4px 8px 8px;
   border: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 4px;
+}
+
+.idea-card-header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: -4px;
+  margin-right: -4px;
+}
+
+.idea-card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .idea-card-drag {
@@ -623,9 +640,8 @@
   align-items: center;
   touch-action: none;
   padding: 4px 6px;
-  margin: -4px -2px;
   min-width: 32px;
-  min-height: 36px;
+  min-height: 32px;
   justify-content: center;
 }
 
@@ -642,6 +658,7 @@
   font-size: 13px;
   line-height: 1.5;
   word-break: break-word;
+  flex: 1;
 }
 
 .idea-add-idea-btn {
