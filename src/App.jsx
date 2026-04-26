@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -497,6 +497,17 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(idea.text)
   const [editColor, setEditColor] = useState(idea.color || '青')
+  const lastTap = useRef(0)
+
+  const handleDoubleTap = () => {
+    const now = Date.now()
+    if (now - lastTap.current < 300) {
+      setEditText(idea.text)
+      setEditColor(idea.color || '青')
+      setEditing(true)
+    }
+    lastTap.current = now
+  }
 
   const handleSave = () => {
     if (!editText.trim()) return
@@ -528,7 +539,7 @@ function SortableIdeaCard({ idea, onDelete, onUpdate }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, width: '100%' }}>
           <div className="idea-card-drag" {...listeners} {...attributes}><DragIcon /></div>
           <div className="idea-card-dot" style={{ background: COLOR_STYLE[idea.color] ?? '#3b82f6', marginTop: 3 }} />
-          <span className="idea-card-text" style={{ flex: 1 }}>{idea.text}</span>
+          <span className="idea-card-text" style={{ flex: 1 }} onClick={handleDoubleTap}>{idea.text}</span>
           <button className="btn-icon" onClick={() => { setEditText(idea.text); setEditColor(idea.color || '青'); setEditing(true) }} title="編集"><PencilIcon /></button>
           <button className="btn-icon btn-delete" onClick={() => onDelete(idea.id)}><XIcon /></button>
         </div>
@@ -706,15 +717,15 @@ function ScheduleBoard({ providerToken }) {
 // ===== SummaryCards =====
 function SummaryCards({ tasks }) {
   const today = todayStr()
-  const remaining = tasks.filter(t => !t.done).length
-  const done = tasks.filter(t => t.done).length
   const todayTodo = tasks.filter(t => !t.done && t.date === today).length
+  const remaining = tasks.filter(t => !t.done).length
+  const highPriority = tasks.filter(t => !t.done && t.priority === '高').length
 
   return (
     <div className="summary-cards">
-      <SummaryCard label="今日やること" value={todayTodo} color="var(--priority-mid-line)" icon="📅" />
-      <SummaryCard label="残りタスク" value={remaining} color="var(--priority-high-line)" icon="📋" />
-      <SummaryCard label="完了" value={done} color="#22c55e" icon="✅" />
+      <SummaryCard label="今日まで" value={todayTodo} color="var(--priority-mid-line)" icon="📅" />
+      <SummaryCard label="残り" value={remaining} color="var(--priority-high-line)" icon="📋" />
+      <SummaryCard label="優先度高" value={highPriority} color="#E24B4A" icon="🔥" />
     </div>
   )
 }
@@ -903,13 +914,12 @@ export default function App() {
       </header>
 
       <main className={`app-main${tab === 'ideas' ? ' app-main--wide' : ''}`}>
-        {tab === 'tasks' && <SummaryCards tasks={tasks} />}
         <div className="tabs">
           <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => setTab('schedule')}>スケジュール</button>
           <button className={`tab-btn${tab === 'tasks' ? ' active' : ''}`} onClick={() => setTab('tasks')}>タスク管理</button>
           <button className={`tab-btn${tab === 'ideas' ? ' active' : ''}`} onClick={() => setTab('ideas')}>アイデアメモ</button>
         </div>
-        {tab === 'tasks' && <TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} />}
+        {tab === 'tasks' && <><SummaryCards tasks={tasks} /><TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} /></>}
         {tab === 'ideas' && <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} onReorder={reorderMemos} onUpdate={updateMemo} />}
         {tab === 'schedule' && <ScheduleBoard providerToken={providerToken} />}
       </main>
