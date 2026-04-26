@@ -774,7 +774,8 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState([])
   const [memos, setMemos] = useState([])
-  const [tab, setTab] = useState('tasks')
+  const [tab, setTab] = useState(() => localStorage.getItem('myboard_tab') ?? 'tasks')
+  const changeTab = (t) => { setTab(t); localStorage.setItem('myboard_tab', t) }
 
 
   // Auth
@@ -920,9 +921,9 @@ export default function App() {
 
       <main className={`app-main${tab === 'ideas' ? ' app-main--wide' : ''}`}>
         <div className="tabs">
-          <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => setTab('schedule')}>スケジュール</button>
-          <button className={`tab-btn${tab === 'tasks' ? ' active' : ''}`} onClick={() => setTab('tasks')}>タスク管理</button>
-          <button className={`tab-btn${tab === 'ideas' ? ' active' : ''}`} onClick={() => setTab('ideas')}>アイデアメモ</button>
+          <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => changeTab('schedule')}>スケジュール</button>
+          <button className={`tab-btn${tab === 'tasks' ? ' active' : ''}`} onClick={() => changeTab('tasks')}>タスク管理</button>
+          <button className={`tab-btn${tab === 'ideas' ? ' active' : ''}`} onClick={() => changeTab('ideas')}>アイデアメモ</button>
         </div>
         {tab === 'tasks' && <><SummaryCards tasks={tasks} /><TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} /></>}
         {tab === 'ideas' && <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} onReorder={reorderMemos} onUpdate={updateMemo} />}
