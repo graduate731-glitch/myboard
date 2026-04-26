@@ -66,6 +66,16 @@
 }
 .btn-logout:hover { border-color: #dc2626; color: #dc2626; }
 
+.btn-theme {
+  font-size: 16px;
+  padding: 4px 8px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 20px;
+  line-height: 1;
+  transition: all 0.12s;
+}
+.btn-theme:hover { background: var(--color-surface-2); }
+
 /* ===== Layout ===== */
 .app {
   min-height: 100vh;

@@ -145,8 +145,8 @@ function LoginScreen() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="login-icon">📌</div>
-        <h1 className="login-title">マイボード</h1>
+        <div className="login-icon">🌱</div>
+        <h1 className="login-title">Seed of Liberal</h1>
         <p className="login-desc">タスク管理 & アイデアメモ</p>
         <button className="btn-google" onClick={handleLogin} disabled={loading}>
           <GoogleIcon />
@@ -776,6 +776,11 @@ export default function App() {
   const [memos, setMemos] = useState([])
   const [tab, setTab] = useState(() => localStorage.getItem('myboard_tab') ?? 'tasks')
   const changeTab = (t) => { setTab(t); localStorage.setItem('myboard_tab', t) }
+  const [dark, setDark] = useState(() => localStorage.getItem('myboard_dark') === 'true')
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('myboard_dark', dark)
+  }, [dark])
 
 
   // Auth
@@ -907,14 +912,17 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1 className="app-title">
-          <span className="app-title-icon">📌</span>
-          マイボード
+          <span className="app-title-icon">🌱</span>
+          Seed of Liberal
         </h1>
         <div className="header-user">
           {session?.user?.user_metadata?.avatar_url && (
             <img src={session.user.user_metadata.avatar_url} className="user-avatar" alt="" />
           )}
           <span className="user-email">{session?.user?.email ?? ''}</span>
+          <button className="btn-theme" onClick={() => setDark(d => !d)} title="テーマ切り替え">
+            {dark ? '☀️' : '🌙'}
+          </button>
           <button className="btn-logout" onClick={handleLogout}>ログアウト</button>
         </div>
       </header>

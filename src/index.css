@@ -30,6 +30,20 @@
   --shadow-md: 0 2px 12px rgba(0,0,0,0.09);
 }
 
+/* ===== Dark Theme ===== */
+html.dark {
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-2: #293548;
+  --color-border: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-accent-light: rgba(79, 125, 249, 0.15);
+  --shadow: 0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md: 0 2px 12px rgba(0,0,0,0.5);
+}
+
 /* ===== Reset ===== */
 *, *::before, *::after {
   box-sizing: border-box;
