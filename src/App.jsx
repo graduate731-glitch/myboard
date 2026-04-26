@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { supabase } from './supabase'
 import './App.css'
 
@@ -353,45 +356,159 @@ function FilterGroup({ label, options, value, onChange }) {
 }
 
 // ===== IdeaBoard =====
-function IdeaBoard({ memos, onAdd, onDelete }) {
-  const [text, setText] = useState('')
+function IdeaBoard({ memos, onAdd, onDelete, onReorder }) {
+  const [localGroups, setLocalGroups] = useState([])
+  const [addingGroup, setAddingGroup] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
 
-  const handleAdd = () => {
-    if (!text.trim()) return
-    onAdd(text.trim())
-    setText('')
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  )
+
+  const dbGroupNames = useMemo(() => [...new Set(memos.map(m => m.group_name))], [memos])
+  const allGroupNames = useMemo(() => [...new Set([...dbGroupNames, ...localGroups])], [dbGroupNames, localGroups])
+
+  const groupedMemos = useMemo(() => {
+    const map = {}
+    allGroupNames.forEach(g => { map[g] = [] })
+    memos.forEach(m => { if (map[m.group_name]) map[m.group_name].push(m) })
+    Object.values(map).forEach(arr => arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
+    return map
+  }, [memos, allGroupNames])
+
+  const handleAddGroup = () => {
+    if (!newGroupName.trim()) return
+    setLocalGroups(prev => [...prev, newGroupName.trim()])
+    setNewGroupName('')
+    setAddingGroup(false)
+  }
+
+  const handleAddIdea = async (groupName, text, color) => {
+    const items = groupedMemos[groupName] ?? []
+    const maxOrder = items.length > 0 ? Math.max(...items.map(m => m.sort_order ?? 0)) : -1
+    await onAdd({ text, group_name: groupName, color, sort_order: maxOrder + 1 })
+    setLocalGroups(prev => prev.filter(g => g !== groupName))
+  }
+
+  const handleDeleteGroup = (groupName) => {
+    ;(groupedMemos[groupName] ?? []).forEach(m => onDelete(m.id))
+    setLocalGroups(prev => prev.filter(g => g !== groupName))
+  }
+
+  const handleDragEnd = (event, groupName) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const items = groupedMemos[groupName]
+    const oldIndex = items.findIndex(m => m.id === active.id)
+    const newIndex = items.findIndex(m => m.id === over.id)
+    onReorder(arrayMove(items, oldIndex, newIndex).map((m, i) => ({ id: m.id, sort_order: i })))
   }
 
   return (
-    <div className="board">
-      <div className="add-form">
-        <textarea
-          className="idea-input"
-          placeholder="アイデアを入力..."
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAdd())}
-          rows={3}
+    <div className="idea-grid">
+      {allGroupNames.map(groupName => (
+        <IdeaColumn
+          key={groupName}
+          groupName={groupName}
+          ideas={groupedMemos[groupName] ?? []}
+          sensors={sensors}
+          onDragEnd={e => handleDragEnd(e, groupName)}
+          onAddIdea={handleAddIdea}
+          onDelete={onDelete}
+          onDeleteGroup={handleDeleteGroup}
         />
-        <div className="add-form-row" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn-add" onClick={handleAdd}>保存</button>
-        </div>
-      </div>
-      <div className="memo-list">
-        {memos.length === 0 ? (
-          <div className="empty-state">メモはありません</div>
-        ) : (
-          memos.map(m => (
-            <div key={m.id} className="memo-item">
-              <p className="memo-text">{m.text}</p>
-              <div className="memo-footer">
-                <span className="memo-date">{m.date}</span>
-                <button className="btn-icon btn-delete" onClick={() => onDelete(m.id)}><XIcon /></button>
-              </div>
+      ))}
+      <div className="idea-add-group-col">
+        {addingGroup ? (
+          <div className="idea-new-group-form">
+            <input
+              className="add-input"
+              placeholder="グループ名..."
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddGroup(); if (e.key === 'Escape') setAddingGroup(false) }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              <button className="btn-add" onClick={handleAddGroup}>作成</button>
+              <button className="btn-cancel" onClick={() => setAddingGroup(false)}>キャンセル</button>
             </div>
-          ))
+          </div>
+        ) : (
+          <button className="idea-add-group-btn" onClick={() => setAddingGroup(true)}>＋ グループを追加</button>
         )}
       </div>
+    </div>
+  )
+}
+
+function IdeaColumn({ groupName, ideas, sensors, onDragEnd, onAddIdea, onDelete, onDeleteGroup }) {
+  const [text, setText] = useState('')
+  const [color, setColor] = useState('青')
+  const [adding, setAdding] = useState(false)
+
+  const handleAdd = () => {
+    if (!text.trim()) return
+    onAddIdea(groupName, text.trim(), color)
+    setText('')
+    setColor('青')
+    setAdding(false)
+  }
+
+  return (
+    <div className="idea-column">
+      <div className="idea-column-header">
+        <span className="idea-column-title">{groupName}</span>
+        <button className="btn-icon btn-delete" onClick={() => onDeleteGroup(groupName)} title="グループを削除"><XIcon /></button>
+      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={ideas.map(m => m.id)} strategy={verticalListSortingStrategy}>
+          <div className="idea-cards">
+            {ideas.map(idea => <SortableIdeaCard key={idea.id} idea={idea} onDelete={onDelete} />)}
+          </div>
+        </SortableContext>
+      </DndContext>
+      {adding ? (
+        <div className="idea-add-form">
+          <input
+            className="add-input"
+            placeholder="アイデアを入力..."
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false) }}
+            autoFocus
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+            {SCHED_COLORS.map(c => (
+              <button key={c} onClick={() => setColor(c)} style={{
+                width: 22, height: 22, borderRadius: '50%', background: COLOR_STYLE[c],
+                border: color === c ? '3px solid #1e293b' : '3px solid transparent', flexShrink: 0,
+              }} title={c} />
+            ))}
+            <button className="btn-save" style={{ marginLeft: 'auto' }} onClick={handleAdd}>追加</button>
+            <button className="btn-cancel" onClick={() => setAdding(false)}>×</button>
+          </div>
+        </div>
+      ) : (
+        <button className="idea-add-idea-btn" onClick={() => setAdding(true)}>＋ アイデアを追加</button>
+      )}
+    </div>
+  )
+}
+
+function SortableIdeaCard({ idea, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: idea.id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className="idea-card"
+    >
+      <div className="idea-card-drag" {...listeners} {...attributes}><DragIcon /></div>
+      <div className="idea-card-dot" style={{ background: COLOR_STYLE[idea.color] ?? '#3b82f6' }} />
+      <span className="idea-card-text">{idea.text}</span>
+      <button className="btn-icon btn-delete" onClick={() => onDelete(idea.id)} style={{ flexShrink: 0 }}><XIcon /></button>
     </div>
   )
 }
@@ -600,6 +717,15 @@ function PencilIcon() {
 function XIcon() {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
 }
+function DragIcon() {
+  return (
+    <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+      <circle cx="4" cy="3" r="1.5"/><circle cx="8" cy="3" r="1.5"/>
+      <circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/>
+      <circle cx="4" cy="13" r="1.5"/><circle cx="8" cy="13" r="1.5"/>
+    </svg>
+  )
+}
 
 // ===== App =====
 export default function App() {
@@ -646,7 +772,8 @@ export default function App() {
       .from('memos')
       .select('*')
       .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
+      .order('group_name', { ascending: true })
+      .order('sort_order', { ascending: true })
     if (data) setMemos(data)
   }
 
@@ -692,13 +819,24 @@ export default function App() {
     }
   }, [tasks, providerToken])
 
-  const addMemo = useCallback(async (text) => {
+  const addMemo = useCallback(async ({ text, group_name, color, sort_order }) => {
     const { data } = await supabase.from('memos').insert({
       text, date: new Date().toLocaleDateString('ja-JP'),
+      group_name: group_name || 'その他',
+      color: color || '青',
+      sort_order: sort_order ?? 0,
       user_id: session.user.id,
     }).select().single()
-    if (data) setMemos(prev => [data, ...prev])
+    if (data) setMemos(prev => [...prev, data])
   }, [session])
+
+  const reorderMemos = useCallback(async (updates) => {
+    const map = Object.fromEntries(updates.map(u => [u.id, u.sort_order]))
+    setMemos(prev => prev.map(m => map[m.id] !== undefined ? { ...m, sort_order: map[m.id] } : m))
+    await Promise.all(updates.map(({ id, sort_order }) =>
+      supabase.from('memos').update({ sort_order }).eq('id', id)
+    ))
+  }, [])
 
   const deleteMemo = useCallback(async (id) => {
     await supabase.from('memos').delete().eq('id', id)
@@ -735,7 +873,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="app-main">
+      <main className={`app-main${tab === 'ideas' ? ' app-main--wide' : ''}`}>
         {tab === 'tasks' && <SummaryCards tasks={tasks} />}
         <div className="tabs">
           <button className={`tab-btn${tab === 'schedule' ? ' active' : ''}`} onClick={() => setTab('schedule')}>スケジュール</button>
@@ -743,7 +881,7 @@ export default function App() {
           <button className={`tab-btn${tab === 'ideas' ? ' active' : ''}`} onClick={() => setTab('ideas')}>アイデアメモ</button>
         </div>
         {tab === 'tasks' && <TaskBoard tasks={tasks} onAdd={addTask} onToggle={toggleTask} onEdit={editTask} onDelete={deleteTask} />}
-        {tab === 'ideas' && <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} />}
+        {tab === 'ideas' && <IdeaBoard memos={memos} onAdd={addMemo} onDelete={deleteMemo} onReorder={reorderMemos} />}
         {tab === 'schedule' && <ScheduleBoard providerToken={providerToken} />}
       </main>
     </div>
